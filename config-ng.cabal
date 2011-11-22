@@ -1,0 +1,23 @@
+name:             config-ng
+version:          0.1.0
+license:          MIT
+license-file:     LICENSE
+copyright:        (c) 2011 Simon Hengel
+author:           Simon Hengel
+maintainer:       simon.hengel@wiktory.org
+build-type:       Simple
+cabal-version:    >= 1.6
+
+library
+  ghc-options:     -Wall
+  hs-source-dirs:  src
+  exposed-modules: Data.Config
+  other-modules:
+      Type
+    , Internal
+    , Parse
+  build-depends:
+      base
+    , containers
+    , text
+    , attoparsec >= 0.10.0.0
