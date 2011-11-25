@@ -35,5 +35,7 @@ render = Text.unpack . Text.unlines . map getSource . reverse . configLines
 sections :: Config -> [Section]
 sections = Map.keys . configCache
 
+-- |
+-- False for empty sections.
 hasSection :: Section -> Config -> Bool
 hasSection s = Map.member s . configCache

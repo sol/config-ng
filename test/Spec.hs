@@ -199,3 +199,30 @@ main = hspec $ do
         "[foo]"
       conf -: delete "foo" "bar" `shouldRenderTo` do
         "[foo]"
+
+  describe "sections" $ do
+    it "is the sorted list of sections" $ do
+      conf <- parse_ $ do
+        "[a]"
+        "foo=bar"
+        "[b]"
+        "foo=bar"
+        "[c]"
+        "foo=bar"
+      conf -: sections `shouldBe`  ["a", "b", "c"]
+
+    it "does not contain duplicates" $ do
+      conf <- parse_ $ do
+        "[a]"
+        "foo=baz"
+        "[a]"
+        "bar=baz"
+      conf -: sections `shouldBe`  ["a"]
+
+    it "does not include empty sections" $ do
+      conf <- parse_ $ do
+        "[a]"
+        "foo=baz"
+        "[b]"
+        "[c]"
+      conf -: sections `shouldBe`  ["a"]
