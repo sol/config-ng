@@ -1,16 +1,14 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# OPTIONS_GHC -fno-warn-unused-do-bind -fno-warn-missing-signatures #-}
-module Spec where
+module Spec (main, spec) where
 
-import Test.Hspec.Monadic
-import Test.Hspec.HUnit ()
-import Test.HUnit
+import           Prelude hiding (lookup)
 
-import Prelude hiding (lookup)
-
+import           Test.Hspec.Monadic
+import           Test.Hspec.HUnit ()
+import           Test.HUnit
 import           Data.String.Builder (Builder, build)
-import           TestUtil hiding (shouldBeSet)
-import qualified TestUtil
+import           TestUtil
 import           Instance ()
 
 import           Data.Config hiding (parse)
@@ -24,19 +22,15 @@ parse input = case Config.parse input of
 
 parse_ = return . parse . build
 
-shouldParseTo :: String -> [(Section, Key, Value)] -> Assertion
-input `shouldParseTo` expected = parse input `shouldBeSet` expected
-
-shouldBeSet :: Config -> [(Section, Key, Value)] -> Assertion
-conf `shouldBeSet` expected = toList conf `TestUtil.shouldBeSet` expected
-
 shouldRenderTo :: Config -> Builder -> Assertion
 conf `shouldRenderTo` expected = render conf `shouldBe_` expected
 
 (-:) :: a -> (a -> b) -> b
 x -: f = f x
 
-main = hspec $ do
+main = hspec spec
+
+spec = do
 
   describe "empty" $ do
 

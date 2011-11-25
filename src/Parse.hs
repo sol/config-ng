@@ -53,4 +53,4 @@ blankLine :: Parser ()
 blankLine = skipBlanks *> pure ()
 
 skipBlanks :: Parser ()
-skipBlanks = skipWhile (\c -> c == ' ' || c == '\t')
+skipBlanks = skipWhile isHorizontalSpace
