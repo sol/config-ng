@@ -1,135 +1,197 @@
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving, OverloadedStrings #-}
 module Internal (
-
-  empty
-, member
-, lookup
+  Config (..)
+, Section (..)
+, ConfigOption (..)
+, Value (..)
+, Key (..)
+, ConfigSection (..)
+, Comment (..)
+, defaultSectionName
 , insert
 , delete
+, toList
+, render
+, empty
+, sections
+, keys
+, lookup
 
   -- used by Parse
 , mkConfig
-
-  -- used by test
-, toList
+, mkSection
 ) where
 
-import           Prelude hiding (lines, lookup)
-import           Data.Maybe (isJust)
+import           Prelude hiding (foldr, lookup)
 
+import           Data.String
+import           Data.Text   (Text)
 import qualified Data.Text as Text
-
+import           Data.Map   (Map)
 import qualified Data.Map as Map
+import           Control.Applicative hiding (empty)
+import           Control.Monad
+import qualified Data.List as List
 
-import           Type
+defaultSectionName :: Section
+defaultSectionName = ""
 
-mkConfig :: [WithSource Line] -> Config
-mkConfig lines = Config lines cache
-  where
-    cache = foldLines ignore onOption ignore Map.empty lines
-    onOption s k v _ acc = cacheInsert s k v acc
-    ignore   _     _ acc = acc
+newtype Section = Section {unSectionName :: Text}
+  deriving (Ord, Eq, IsString)
 
-cacheInsert :: Section -> Key -> Value -> Cache -> Cache
-cacheInsert s k v cache = Map.alter f s cache
-  where
-    f Nothing  = Just $ Map.singleton k v
-    f (Just m) = Just $ Map.insert    k v m
+newtype Key = Key {unKey :: Text}
+  deriving (Ord, Eq, IsString)
 
--- used by test
-toList :: Config -> [(Section, Key, Value)]
-toList = concat . Map.elems . Map.mapWithKey f . configCache
-  where
-    f s = Map.elems . Map.mapWithKey (\k v -> (s, k, v))
+newtype Value = Value {unValue :: Text}
+  deriving IsString
+
+instance Show Section where
+  showsPrec p = showsPrec p . unSectionName
+instance Show Key where
+  showsPrec p = showsPrec p . unKey
+instance Show Value where
+  showsPrec p = showsPrec p . unValue
+
+newtype Index = Index Int
+  deriving (Eq, Show, Enum, Num, Ord, Bounded)
+
+newtype Comment = Comment {unComment :: Text}
 
 empty :: Config
-empty = mkConfig []
+empty = Config $ Map.empty
 
-member :: Section -> Key -> Config -> Bool
-member s k = isJust . lookup s k
+sections :: Config -> [Section]
+sections = Map.keys . configSections
+
+keys :: Section -> Config -> [Key]
+keys s = maybe [] (Map.keys . sectionOptions . snd) . Map.lookup s . configSections
 
 lookup :: Section -> Key -> Config -> Maybe Value
-lookup s k conf = Map.lookup s (configCache conf) >>= Map.lookup k
+lookup s k conf = Map.lookup s (configSections conf) >>= lookupSection k . snd
 
-delete :: Section -> Key -> Config -> Config
-delete s k = mkConfig . delete_ s k . configLines
+lookupSection :: Key -> ConfigSection -> Maybe Value
+lookupSection k section =
+  (optionValue . snd) `fmap` (Map.lookup k $ sectionOptions section)
 
-data DroppedPrevious = Dropped | Kept
+toList :: Config -> [(Section, Key, Value)]
+toList = fold (\s k v acc -> (s, k, v) : acc) []
 
-delete_ :: Section -> Key -> [WithSource Line] -> [WithSource Line]
-delete_ section key lines =
-  case foldLines onSection onOption onIgnore start lines of
-    (Dropped, l) -> dropHeadIfSection l
-    (Kept,    l) -> l
+toMap :: Config -> Map Section (Map Key Value)
+toMap = fold insert_ Map.empty
   where
-    start =
-      ( Kept -- have we dropped the previous element?
-      , []
-      )
-    onIgnore  _     x (_,       xs) = (Kept, x : xs)
-    onSection _     x (Kept,    xs) = (Kept, x : xs)
-    onSection _     x (Dropped, xs) = (Kept, x : dropHeadIfSection xs)
-    onOption  s k _ x (_,       xs) = if section == s && key == k then (Dropped, xs) else (Kept, x : xs)
+    insert_ s k v acc = Map.alter f s acc
+      where
+        f Nothing  = Just $ Map.singleton k v
+        f (Just m) = Just $ Map.insert k v m
+
+fold :: (Section -> Key -> Value -> b -> b) -> b -> Config -> b
+fold f start c = Map.foldrWithKey g start $ configSections c
+  where
+    g s = foldSection (f s)
+
+foldSection :: (Key -> Value -> b -> b) -> (Index, ConfigSection) -> b -> b
+foldSection f (_, section) start = Map.foldrWithKey g start $ sectionOptions section
+  where
+    g k (_, a) acc = f k (optionValue a) acc
+
+
+newtype Config = Config {
+  configSections       :: Map Section (Index, ConfigSection)
+}
+
+data ConfigSection = ConfigSection {
+  sectionOptions      :: Map Key (Index, ConfigOption)
+, sectionComments     :: [(Index, Comment)]
+, sectionEmptyLines   :: [(Index, Text)]
+, sectionRenderedName :: Text
+}
+
+data ConfigOption = ConfigOption {
+  optionRenderedKey :: Text  -- includes separator
+, optionValue       :: Value -- includes horizontal spaces at the end
+}
+
+mkOption :: Key -> Value -> ConfigOption
+mkOption k v = ConfigOption (unKey k `Text.append` "=") v
+
+insertIntoSection :: Key -> Value -> ConfigSection -> ConfigSection
+insertIntoSection k v s = s { sectionOptions = Map.alter alterOption k (sectionOptions s) }
+  where
+    alterOption Nothing       = Just (-1, mkOption k v)
+    alterOption (Just (i, x)) = Just (i, x {optionValue = v})
 
 insert :: Section -> Key -> Value -> Config -> Config
-insert s k v conf = (mkConfig . op s k v . configLines) conf
+insert s k v c = Config newSections
   where
-    op = if member s k conf then replace_ else insert_
+    newSections = Map.alter f s $ configSections c
+      where
+        sectionIndex = if s == defaultSectionName then minBound else maxBound
+        f Nothing       = Just $ (sectionIndex, newSection s k v)
+        f (Just (i, x)) = Just $ (i, insertIntoSection k v x)
 
-insert_ :: Section -> Key -> Value -> [WithSource Line] -> [WithSource Line]
-insert_ section key value lines =
-  case foldLines onSection onOption onIgnore start lines of
-    (True,  l) -> l
-    (False, l) -> new : mkSectionLine section : l
+newSection :: Section -> Key -> Value -> ConfigSection
+newSection s k v = ConfigSection {
+    sectionOptions      = Map.singleton k (0, option)
+  , sectionComments     = []
+  , sectionEmptyLines   = []
+  , sectionRenderedName = renderedName
+  }
   where
-    new = mkOptionLine key value
-    start = ( False -- have we already inserted?
-            , [])
-    onSection s     x (b@False, xs) = if s == section then (True, new : x : xs) else (b, x : xs)
-    onSection _     x (b@True,  xs) = (b, x : xs)
-    onOption  _ _ _ x (b,       xs) = (b, x : xs)
-    onIgnore _      x (b,       xs) = (b, x : xs)
+    option =  ConfigOption (unKey k `Text.append` "=") v
+    renderedName = if s == defaultSectionName then "" else Text.concat ["[", unSectionName s, "]"]
 
-replace_ :: Section -> Key -> Value -> [WithSource Line] -> [WithSource Line]
-replace_ section key value lines =
-  case foldLines onSection onOption onIgnore start lines of
-    (_, Dropped, l) -> dropHeadIfSection l
-    (_, Kept,    l) -> l
+delete :: Section -> Key -> Config -> Config
+delete s k c = Config $ Map.alter f s $ configSections c
   where
-    new = mkOptionLine key value
-    start = ( False -- have we already replaced?
-            , Kept  -- have we dropped the previous element? replacing qualifies as Kept!
-            , [])
-    onSection _    x (y, Dropped, xs) = (y, Kept, x : dropHeadIfSection xs)
-    onSection _    x (y, Kept,    xs) = (y, Kept, x : xs)
-    onIgnore  _    x (y, _,       xs) = (y, Kept, x : xs)
-    onOption s k _ x (b@False, _, xs) = if s == section && k == key then (True, Kept, new : xs) else (b, Kept, x : xs)
-    onOption s k _ x (b@True,  _, xs) = if s == section && k == key then (b,    Dropped,    xs) else (b, Kept, x : xs)
+    f Nothing  = Nothing
+    f (Just x) = deleteFromSection k x
 
-dropHeadIfSection :: [WithSource Line] -> [WithSource Line]
-dropHeadIfSection lines = case lines of
-  (WithSource _ (SectionLine _)) : xs -> xs
-  _ -> lines
 
-mkSectionLine :: Section -> WithSource Line
-mkSectionLine section = WithSource source $ SectionLine section
+deleteFromSection :: Key -> (Index, ConfigSection) -> Maybe (Index, ConfigSection)
+deleteFromSection k (i, s)
+  | isEmpty   = Nothing
+  | otherwise = Just (i, s {sectionOptions = newOptions})
   where
-    source = Text.concat ["[", unSection section, "]"]
+    options    = sectionOptions s
+    newOptions = Map.delete k options
+    isEmpty    = Map.null newOptions && null (sectionComments s)
 
-mkOptionLine :: Key -> Value -> WithSource Line
-mkOptionLine key value = WithSource source $ OptionLine key value
-  where
-    source = Text.concat [unKey key, "=", unValue value]
+renderOption :: ConfigOption -> Text
+renderOption (ConfigOption k v) = k `Text.append` unValue v
 
-foldLines
-  :: (Section ->                 WithSource Line -> acc -> acc)
-  -> (Section -> Key -> Value -> WithSource Line -> acc -> acc)
-  -> (Section ->                 WithSource Line -> acc -> acc)
-  -> acc
-  -> [WithSource Line]
-  -> acc
-foldLines onSection onOption onIgnore start = snd . foldr step (Section "", start)
+renderSectionBody :: ConfigSection -> [Text]
+renderSectionBody s = map snd . sortByIndex $ options ++ comments ++ sectionEmptyLines s
   where
-    step x@(WithSource _ (SectionLine s))  (_, xs) = (s, onSection s     x xs)
-    step x@(WithSource _ (OptionLine k v)) (s, xs) = (s, onOption  s k v x xs)
-    step x@(WithSource _ IgnoreLine)       (s, xs) = (s, onIgnore  s     x xs)
+    options  = map (fmap renderOption) $ Map.elems $ sectionOptions s
+    comments = map (fmap unComment) $ sectionComments s
+
+renderSection :: ConfigSection -> [Text]
+renderSection s
+  | sectionRenderedName s == unSectionName defaultSectionName = renderSectionBody s
+  | otherwise = sectionRenderedName s : renderSectionBody s
+
+renderConfig :: Config -> [Text]
+renderConfig c =
+  concatMap (renderSection . snd) . sortByIndex $ Map.elems $ configSections c
+
+render :: Config -> String
+render = Text.unpack . Text.unlines . renderConfig
+
+sortByIndex :: [(Index, a)] -> [(Index, a)]
+sortByIndex = List.sortBy (\(a, _) (b, _) -> a `compare` b)
+
+mkConfig :: [(Section, ConfigSection)] -> Either String Config
+mkConfig l = Config <$> foldM go Map.empty (zip l [0..])
+  where
+    go acc ((s, x), i) = case Map.insertLookupWithKey undefined s (i, x) acc of
+      (Nothing, m) -> return m
+      _ -> Left ("duplicate section " ++ show s ++ "!")
+
+mkSection :: [(Key, (Index, ConfigOption))] -> [(Index, Comment)] -> [(Index, Text)] -> Text -> Either String ConfigSection
+mkSection opts c b n = do
+  o <- foldM go Map.empty opts
+  return $ ConfigSection o c b n
+  where
+    go acc (k, v) = case Map.insertLookupWithKey undefined k v acc of
+      (Nothing, m) -> return m
+      _ -> Left ("duplicate key " ++ show k ++ "!")

@@ -11,6 +11,8 @@ import Data.String.Builder
 
 -- TODO/IDEAS
 --  * Allow assertFailure in pure code
+--  * it would be nice if something like
+--    `[] `shouldBe` null` would work..
 
 shouldBe :: (Show a, Eq a) => a -> a -> Assertion
 actual `shouldBe` expected = unless (actual == expected) (assertFailure message)

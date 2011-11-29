@@ -9,4 +9,4 @@ runhaskell -hide-all-packages\
     -packageHUnit\
     -packageQuickCheck\
     -packagehspec\
-    -i../src Main.hs $*
+    -i../src Spec.hs $*

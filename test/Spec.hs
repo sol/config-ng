@@ -1,24 +1,27 @@
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE OverloadedStrings, ScopedTypeVariables #-}
 {-# OPTIONS_GHC -fno-warn-unused-do-bind -fno-warn-missing-signatures #-}
 module Spec (main, spec) where
 
 import           Prelude hiding (lookup)
 
 import           Test.Hspec.Monadic
+import           Test.Hspec.QuickCheck
 import           Test.Hspec.HUnit ()
 import           Test.HUnit
+import           Test.QuickCheck hiding (property)
+
 import           Data.String.Builder (Builder, build)
 import           TestUtil
 import           Instance ()
 
-import           Data.Config hiding (parse)
-import qualified Data.Config as Config
-import           Internal (toList)
+import           Data.Set   (Set)
+import qualified Data.Set as Set
+import           Data.Foldable (foldrM)
 
-parse :: String -> Config
-parse input = case Config.parse input of
-  Right x -> x
-  Left err -> error err
+import qualified Data.Config as Config
+import           Data.Config hiding (parse)
+
+import           Arbitrary (parse, Input(..), InputAndConfig1(..), InputAndConfig(..))
 
 parse_ = parse . build
 
@@ -33,19 +36,46 @@ main = hspec spec
 spec = do
 
   describe "empty" $ do
-
     it "has no sections" $ do
-      sections empty `shouldBe` []
+      empty -: sections `shouldBe` []
 
-    it "contains no values" $ do
-      toList empty `shouldBe` []
+    it "has no values" $ do
+      empty -: toList `shouldBe` []
 
     it "renders to empty string" $ do
-      render empty `shouldBe` ""
+      empty -: render `shouldBe` ""
 
+  describe "parse" $ do
+    it "parses the empty string to `empty`" $ do
+      Config.parse "" `shouldBe` Right empty
+
+    it "fails on duplicate option" $ do
+      Config.parse . build $ do
+        "[foo]"
+        "foo=bar"
+        "foo=baz"
+      `shouldBe` Left "duplicate key \"foo\"!"
+
+    it "fails on duplicate option" $ do
+      Config.parse . build $ do
+        "foo=bar"
+        "foo=baz"
+      `shouldBe` Left "duplicate key \"foo\"!"
+
+    it "fails on duplicate section" $ do
+      Config.parse . build $ do
+        "[foo]"
+        "[foo]"
+      `shouldBe` Left "duplicate section \"foo\"!"
+
+    it "gives line number on parse error" $ do
+      Config.parse . build $ do
+        "[foo]"
+        "[bar"
+        "[baz]"
+      `shouldBe` Left "parse error on line 2!"
 
   describe "lookup" $ do
-
     it "returns a value, given a section and a key" $ do
       parse_ $ do
         "[foo]"
@@ -58,11 +88,24 @@ spec = do
         "bar=baz"
       -: lookup "foo" "baz" `shouldBe` Nothing
 
+    it "returns a value from the default section, if the given section is the empty string" $ do
+      parse_ $ do
+        "foo=bar"
+      -: lookup "" "foo" `shouldBe` Just "bar"
 
   describe "insert" $ do
-
-    it "inserts an option" $ do
+    it "inserts an option, given a section, a key, and a value" $ do
       insert "foo" "bar" "baz" empty `shouldRenderTo` do
+        "[foo]"
+        "bar=baz"
+
+    it "inserts an option into the default section, if the given section is the empty string" $ do
+      insert "" "bar" "baz" empty `shouldRenderTo` do
+        "bar=baz"
+
+    it "inserts an option into the default section, if the given section is the empty string" $ do
+      empty -: insert "foo" "bar" "baz" -: insert "" "key" "value" `shouldRenderTo` do
+        "key=value"
         "[foo]"
         "bar=baz"
 
@@ -76,73 +119,21 @@ spec = do
           "bar=some"
           "some=other"
 
-    it "removes duplicates, when replacing" $ do
-        parse_ $ do
-          "[foo]"
-          "bar=baz"
-          "bar=test"
-        -: insert "foo" "bar" "some" `shouldRenderTo` do
-          "[foo]"
-          "bar=some"
+    prop "replaces an existing option" $ \(InputAndConfig1 _ conf) v -> do
+      (s, k, _) <- elements $ toList conf
+      return $ (conf -: insert s k v -: lookup s k) == Just v
 
-    it "removes empty sections, when removing duplicates" $ do
-        parse_ $ do
-          "[foo]"
-          "bar=baz"
-          "[foo]"
-          "bar=test"
-          "[baz]"
-        -: insert "foo" "bar" "some" `shouldRenderTo` do
-          "[foo]"
-          "bar=some"
-          "[baz]"
+    it "preserves formating, when replacing" $ do
+      parse_ $ do
+        " foo\t  =   bar"
+      -: insert "" "foo" "baz" `shouldRenderTo` do
+        " foo\t  =   baz"
 
-    it "removes empty sections, when removing duplicates (at end of file)" $ do
-        parse_ $ do
-          "[foo]"
-          "bar=baz"
-          "[foo]"
-          "bar=test"
-        -: insert "foo" "bar" "some" `shouldRenderTo` do
-          "[foo]"
-          "bar=some"
-
-    it "does not remove an empty section, when there are still comments in that section" $ do
-        parse_ $ do
-          "[foo]"
-          "bar=baz"
-          "[bar]"
-          "[foo]"
-          "bar=test"
-          "# some comment"
-        -: insert "foo" "bar" "some" `shouldRenderTo` do
-          "[foo]"
-          "bar=some"
-          "[bar]"
-          "[foo]"
-          "# some comment"
-
-    it "keeps an empty section, if it did not remove anything from that section" $ do
-        parse_ $ do
-          "[foo]"
-          "bar=baz"
-          "[foo]"
-          "[bar]"
-        -: insert "foo" "bar" "some" `shouldRenderTo` do
-          "[foo]"
-          "bar=some"
-          "[foo]"
-          "[bar]"
-
-    it "keeps an empty section, if it did not remove anything from that section (at end of file)" $ do
-        parse_ $ do
-          "[foo]"
-          "bar=baz"
-          "[foo]"
-        -: insert "foo" "bar" "some" `shouldRenderTo` do
-          "[foo]"
-          "bar=some"
-          "[foo]"
+    prop "preserves formating, when replacing" $ \(InputAndConfig input conf) v ->
+      let l = (toList conf)
+          updatedA = foldr (\(s, k, _) c -> insert s k v c) conf     l -- change every value to v
+          updatedB = foldr (\(s, k, o) c -> insert s k o c) updatedA l -- restore every value
+      in render updatedB == input
 
   describe "delete" $ do
     it "removes an option" $ do
@@ -165,12 +156,6 @@ spec = do
       -: delete "foo" "bar" `shouldRenderTo` do
         "[bar]"
 
-    it "removes an empty section, if it removed an option from that section (at end of file)" $ do
-      parse_ $ do
-        "[foo]"
-        "bar=baz"
-      -: delete "foo" "bar" `shouldBe` empty
-
     it "does not remove an empty section, if there are still comments in that section" $ do
       parse_ $ do
         "[foo]"
@@ -180,22 +165,18 @@ spec = do
         "[foo]"
         "# some comment"
 
-    it "keeps an empty section, if it did not remove anything from that section" $ do
+    it "removes an empty section, when trying to remove a non-existing option from that section" $ do
       parse_ $ do
         "[foo]"
         "[bar]"
       -: delete "foo" "bar" `shouldRenderTo` do
-        "[foo]"
         "[bar]"
 
-    it "keeps an empty section, if it did not remove anything from that section (at end of file)" $ do
-      parse_ $ do
-        "[foo]"
-      -: delete "foo" "bar" `shouldRenderTo` do
-        "[foo]"
+    prop "is the same as insert and then delete" $ \conf s k v ->
+      (conf -: insert s k v -: delete s k -: render) == (conf -: delete s k -: render)
 
   describe "sections" $ do
-    it "is the sorted list of sections" $ do
+    it "returns a list of sections" $ do
       parse_ $ do
         "[a]"
         "foo=bar"
@@ -205,18 +186,53 @@ spec = do
         "foo=bar"
       -: sections `shouldBe`  ["a", "b", "c"]
 
-    it "does not contain duplicates" $ do
-      parse_ $ do
-        "[a]"
-        "foo=baz"
-        "[a]"
-        "bar=baz"
-      -: sections `shouldBe`  ["a"]
-
-    it "does not include empty sections" $ do
+    it "includes empty sections" $ do
       parse_ $ do
         "[a]"
         "foo=baz"
         "[b]"
         "[c]"
-      -: sections `shouldBe`  ["a"]
+      -: sections `shouldBe`  ["a", "b", "c"]
+
+  describe "keys" $ do
+    it "returns a list of keys from a given section" $ do
+      parse_ $ do
+        "[a]"
+        "foo="
+        "bar=test"
+        "baz=test"
+      -: keys "a" `shouldBeSet`  ["foo", "bar", "baz"]
+
+  describe "toList" $ do
+    it "returs a list of all section-key-value tuples" $ do
+      parse_ $ do
+        "[a]"
+        "foo=bar"
+        "[b]"
+        "[c]"
+        "foo=baz"
+      -: toList `shouldBeSet` [("a", "foo", "bar"), ("c", "foo", "baz")]
+
+    it "returs a list of all section-key-value tuples" $ do
+      parse_ $ do
+        "[a]"
+        "foo=bar"
+        "baz=bar"
+      -: toList `shouldBeSet` [("a", "foo", "bar"), ("a", "baz", "bar")]
+
+    prop "returs a list of all section-key-value tuples" $ \(set :: Set (Section, Key)) -> do
+      let myFoldrM start t f = foldrM f start t
+      (l_, conf) <- myFoldrM ([], empty) set $ \(s, k) (l, acc) -> do
+        v <- arbitrary
+        return $ ((s, k, v) : l, insert s k v acc)
+      return $ (Set.fromList . toList) conf == Set.fromList l_
+
+  describe "render" $ do
+    it "renders a config" $ do
+      (empty -: insert "a" "key" "value" -: insert "" "foo" "bar") `shouldRenderTo` do
+        "foo=bar"
+        "[a]"
+        "key=value"
+
+    prop "is inverse to parse" $
+      \(Input conf) -> (conf -: parse -: render) == conf
