@@ -75,6 +75,21 @@ spec = do
         "[baz]"
       `shouldBe` Left "parse error on line 2!"
 
+    it "works on input with LF line endings" $ do
+        parse "[foo]\na=foo\nb=bar" -: toList `shouldBe` [("foo", "a", "foo"), ("foo", "b", "bar")]
+
+    it "works on input with CR+LF line endings" $ do
+        parse "[foo]\r\na=foo\r\nb=bar" -: toList `shouldBe` [("foo", "a", "foo"), ("foo", "b", "bar")]
+
+    it "works on input with mixed line endings" $ do
+        parse "[foo]\r\na=foo\nb=bar" -: toList `shouldBe` [("foo", "a", "foo"), ("foo", "b", "bar")]
+
+    it "fails on a CR character that is not followed by a LF" $ do
+      Config.parse . build $ do
+        "[foo]"
+        "bar=foo\rbar"
+      `shouldBe` Left "parse error on line 2!"
+
   describe "lookup" $ do
     it "returns a value, given a section and a key" $ do
       parse_ $ do
@@ -108,6 +123,31 @@ spec = do
         "key=value"
         "[foo]"
         "bar=baz"
+
+    it "inserts new options at the beginning of a section" $ do
+        -- this is important, as comments at the end of a section may be
+        -- commented sections...
+        parse_ $ do
+          "[foo]"
+          "a=foo"
+          "b=bar"
+        -: insert "foo" "c" "baz" `shouldRenderTo` do
+          "[foo]"
+          "c=baz"
+          "a=foo"
+          "b=bar"
+
+    it "appends new sections at the end" $ do
+        parse_ $ do
+          "[foo]"
+          "[bar]"
+          "[baz]"
+        -: insert "a" "b" "c" `shouldRenderTo` do
+          "[foo]"
+          "[bar]"
+          "[baz]"
+          "[a]"
+          "b=c"
 
     it "replaces an existing option" $ do
         parse_ $ do
@@ -234,5 +274,14 @@ spec = do
         "[a]"
         "key=value"
 
-    prop "is inverse to parse" $
+    it "always adds a newline to the end" $ do
+        parse "[foo]\na=foo\nb=bar" -: render `shouldBe` "[foo]\na=foo\nb=bar\n"
+
+    it "always delimits lines with NL" $ do
+        parse "[foo]\r\na=foo\r\nb=bar\r\n" -: render `shouldBe` "[foo]\na=foo\nb=bar\n"
+
+    it "always delimits lines with NL" $ do
+        parse "[foo]\r\na=foo\nb=bar\n" -: render `shouldBe` "[foo]\na=foo\nb=bar\n"
+
+    prop "is inverse to parse (apart from newline handling)" $
       \(Input conf) -> (conf -: parse -: render) == conf
