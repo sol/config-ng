@@ -42,7 +42,7 @@ defaultSection = do
   l <- sectionBody
   case l of
     [] -> return Nothing
-    _  -> return $ Just $ (defaultSectionName,) `fmap` mkSection_ (unSectionName defaultSectionName) l
+    _  -> return $ Just $ (defaultSectionName,) `fmap` mkSection_ (unSection defaultSectionName) l
 
 mkSection_ :: Text -> [SectionBodyLine] -> Either String ConfigSection
 mkSection_ renderedName l = mkSection options comments blankLines renderedName

@@ -37,7 +37,7 @@ import qualified Data.List as List
 defaultSectionName :: Section
 defaultSectionName = ""
 
-newtype Section = Section {unSectionName :: Text}
+newtype Section = Section {unSection :: Text}
   deriving (Ord, Eq, IsString)
 
 newtype Key = Key {unKey :: Text}
@@ -47,7 +47,7 @@ newtype Value = Value {unValue :: Text}
   deriving IsString
 
 instance Show Section where
-  showsPrec p = showsPrec p . unSectionName
+  showsPrec p = showsPrec p . unSection
 instance Show Key where
   showsPrec p = showsPrec p . unKey
 instance Show Value where
@@ -57,7 +57,7 @@ class ToString a where
   toString :: a -> String
 
 instance ToString Section where
-  toString = Text.unpack . unSectionName
+  toString = Text.unpack . unSection
 instance ToString Key where
   toString = Text.unpack . unKey
 instance ToString Value where
@@ -149,7 +149,7 @@ newSection s k v = ConfigSection {
   }
   where
     option =  ConfigOption (unKey k `Text.append` "=") v
-    renderedName = if s == defaultSectionName then "" else Text.concat ["[", unSectionName s, "]"]
+    renderedName = if s == defaultSectionName then "" else Text.concat ["[", unSection s, "]"]
 
 delete :: Section -> Key -> Config -> Config
 delete s k c = Config $ Map.alter f s $ configSections c
@@ -178,7 +178,7 @@ renderSectionBody s = map snd . sortByIndex $ options ++ comments ++ sectionEmpt
 
 renderSection :: ConfigSection -> [Text]
 renderSection s
-  | sectionRenderedName s == unSectionName defaultSectionName = renderSectionBody s
+  | sectionRenderedName s == unSection defaultSectionName = renderSectionBody s
   | otherwise = sectionRenderedName s : renderSectionBody s
 
 renderConfig :: Config -> [Text]
