@@ -13,8 +13,7 @@ library
   hs-source-dirs:  src
   exposed-modules: Data.Config
   other-modules:
-      Type
-    , Internal
+      Internal
     , Parse
   build-depends:
       base
