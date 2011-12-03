@@ -16,6 +16,7 @@ module Internal (
 , sections
 , keys
 , lookup
+, ToString (..)
 
   -- used by Parse
 , mkConfig
@@ -51,6 +52,16 @@ instance Show Key where
   showsPrec p = showsPrec p . unKey
 instance Show Value where
   showsPrec p = showsPrec p . unValue
+
+class ToString a where
+  toString :: a -> String
+
+instance ToString Section where
+  toString = Text.unpack . unSectionName
+instance ToString Key where
+  toString = Text.unpack . unKey
+instance ToString Value where
+  toString = Text.unpack . unValue
 
 newtype Index = Index Int
   deriving (Eq, Show, Enum, Num, Ord, Bounded)

@@ -13,6 +13,7 @@ module Data.Config (
 , keys
 , hasSection
 , toList
+, ToString(..)
 ) where
 
 import           Prelude hiding (lookup)
@@ -24,8 +25,6 @@ import           Parse (parseConfig)
 
 parse :: String -> Either String Config
 parse = parseConfig . Text.pack
-
-
 
 hasSection :: Section -> Config -> Bool
 hasSection s = Map.member s . configSections

@@ -11,7 +11,7 @@ cabal-version:    >= 1.6
 library
   ghc-options:     -Wall
   hs-source-dirs:  src
-  exposed-modules: Data.Config
+  exposed-modules: Data.Config Data.Config.String
   other-modules:
       Internal
     , Parse
