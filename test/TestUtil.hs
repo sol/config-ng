@@ -13,6 +13,17 @@ import Data.String.Builder
 --  * Allow assertFailure in pure code
 --  * it would be nice if something like
 --    `[] `shouldBe` null` would work..
+--
+--  * ignore does not work on prop.
+
+isLeft :: Either a b -> Bool
+isLeft (Left  _) = True
+isLeft (Right _) = False
+
+shouldSatisfy :: (Show a) => a -> (a -> Bool) -> Assertion
+x `shouldSatisfy` p = unless (p x) (assertFailure message)
+  where
+    message = show x ++ " did not satisfy predicate"
 
 shouldBe :: (Show a, Eq a) => a -> a -> Assertion
 actual `shouldBe` expected = unless (actual == expected) (assertFailure message)

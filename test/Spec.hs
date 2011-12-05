@@ -103,7 +103,7 @@ spec = do
         "[foo]"
         "[bar"
         "[baz]"
-      `shouldBe` Left "parse error on line 2!"
+      `shouldBe` Left "2:5:\nunexpected \"\\n\"\nexpecting \"]\""
 
     it "works on input with LF line endings" $ do
         parse "[foo]\na=foo\nb=bar" -: toList `shouldBe` [("foo", "a", "foo"), ("foo", "b", "bar")]
@@ -118,7 +118,7 @@ spec = do
       Config.parse . build $ do
         "[foo]"
         "bar=foo\rbar"
-      `shouldBe` Left "parse error on line 2!"
+      `shouldSatisfy` isLeft
 
   describe "lookup" $ do
     it "returns a value, given a section and a key" $ do

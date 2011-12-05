@@ -6,23 +6,12 @@ import           Control.Applicative
 import           Control.Monad
 import           Data.Text   (Text)
 import qualified Data.Text as Text
-import           Data.Attoparsec.Text hiding (option)
 
+import           ParseUtil
 import           Internal
 
-lnum :: Text -> Text -> Int
-lnum full left = succ $ length $ Text.lines parsed
-  where
-    parsed = Text.take (Text.length full - Text.length left) full
-
-parse_ :: Parser a -> Text -> Either String a
-parse_ p input = case flip feed "" $ parse p input of
-  Fail t _ _ -> Left $ "parse error on line " ++ show (lnum input t) ++ "!"
-  Done _ r   -> return r
-  Partial _  -> fail "this should never happen"
-
 parseConfig :: Text -> Either String Config
-parseConfig input = join $ parse_ (config <* endOfInput) input
+parseConfig input = join $ parse (config <* endOfInput) input
 
 config :: Parser (Either String Config)
 config = do
@@ -76,7 +65,7 @@ sectionBody = many sectionBodyLine
 data SectionBodyLine = OptionLine Key ConfigOption | CommentLine Comment | BlankLine Text
 
 sectionBodyLine :: Parser SectionBodyLine
-sectionBodyLine = uncurry OptionLine <$> option <|> CommentLine <$> comment <|> BlankLine <$> blankLine
+sectionBodyLine = try (uncurry OptionLine <$> option) <|> try (CommentLine <$> comment) <|> try (BlankLine <$> blankLine)
 
 -- | A key–value pair
 option :: Parser (Key, ConfigOption)
