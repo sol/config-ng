@@ -56,7 +56,7 @@ value :: Gen Text
 value = resize 10 $ Text.stripStart <$> arbitraryLine
 
 sectionHeader :: Text -> Gen Text
-sectionHeader name = concatG [blanks, pure "[", blanks, pure name, blanks, pure "]", blanks]
+sectionHeader name = concatG [blanks, pure "[", pure name, pure "]", blanks]
 
 option :: Text -> Gen Text
 option k = concatG [blanks, pure k, blanks, separator, blanks, value]

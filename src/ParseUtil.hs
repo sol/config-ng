@@ -10,6 +10,7 @@ module ParseUtil (
 , endOfInput
 , try
 , string
+, char
 , isHorizontalSpace
 , isEndOfLine
 ) where

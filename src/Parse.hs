@@ -43,21 +43,17 @@ mkSection_ renderedName l = mkSection options comments blankLines renderedName
 
 sectionHeader :: Parser (Section, Text)
 sectionHeader = do
-  a  <- blanks
-  b  <- string "["
-  c  <- blanks
-  dn <- sectionName
-  e  <- blanks
-  f  <- string "]"
-  g  <- blanks
+  pre  <- blanks
+  name <- char '[' *> sectionName <* char ']'
+  post  <- blanks
   endOfLine <|> endOfInput
-  return (Section dn, Text.concat [a, b, c, dn, e, f, g])
+  return (Section name, Text.concat [pre, "[", name, "]", post])
 
 sectionName :: Parser Text
 sectionName = takeWhile1 sectionClass
 
 sectionClass :: Char -> Bool
-sectionClass c = (not . elem c) "\n\r\t []"
+sectionClass c = (not . elem c) "\n\r[]"
 
 sectionBody :: Parser [SectionBodyLine]
 sectionBody = many sectionBodyLine
