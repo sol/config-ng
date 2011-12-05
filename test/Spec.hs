@@ -1,4 +1,4 @@
-{-# LANGUAGE OverloadedStrings, ScopedTypeVariables #-}
+{-# LANGUAGE OverloadedStrings, ScopedTypeVariables, CPP #-}
 {-# OPTIONS_GHC -fno-warn-unused-do-bind -fno-warn-missing-signatures #-}
 module Spec (main, spec) where
 
@@ -103,7 +103,11 @@ spec = do
         "[foo]"
         "[bar"
         "[baz]"
+#ifdef USE_ATTOPARSEC
+      `shouldBe` Left "parse error on line 2!"
+#else
       `shouldBe` Left "2:5:\nunexpected \"\\n\"\nexpecting \"]\""
+#endif
 
     it "works on input with LF line endings" $ do
         parse "[foo]\na=foo\nb=bar" -: toList `shouldBe` [("foo", "a", "foo"), ("foo", "b", "bar")]

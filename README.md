@@ -1,3 +1,4 @@
+## Using attoparsec
 You can build this library against
 [attoparsec](http://hackage.haskell.org/package/attoparsec) instead of
 [Parsec](http://hackage.haskell.org/package/parsec).  This is somewhat faster,

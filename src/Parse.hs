@@ -57,7 +57,7 @@ sectionName :: Parser Text
 sectionName = takeWhile1 sectionClass
 
 sectionClass :: Char -> Bool
-sectionClass = inClass "-_a-zA-Z0-9"
+sectionClass c = (not . elem c) "\n\r\t []"
 
 sectionBody :: Parser [SectionBodyLine]
 sectionBody = many sectionBodyLine
@@ -79,7 +79,7 @@ option = mk <$> blanks <*> key <*> blanks <*> separator <*> blanks <*> takeLine
         renderedKey = Text.concat [pre_key, _key, pre_sep, sep, post_sep]
 
 keyClass :: Char -> Bool
-keyClass = inClass "-_a-zA-Z0-9"
+keyClass c = (not . elem c) "\n\r\t =:[]#"
 
 comment :: Parser Comment
 comment = mk <$> blanks <*> string "#" <*> takeLine

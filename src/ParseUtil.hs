@@ -8,7 +8,6 @@ module ParseUtil (
 , takeWhile1
 , endOfLine
 , endOfInput
-, inClass
 , try
 , string
 , isHorizontalSpace
@@ -25,7 +24,6 @@ import           Data.Attoparsec.Text hiding (option, parse, isHorizontalSpace, 
 import qualified Data.Attoparsec.Text as Attoparsec
 #else
 import           Control.Applicative
-import           Data.Attoparsec.Text (inClass)
 import           Text.Parsec.Text (Parser)
 import           Text.Parsec (try, char, satisfy, eof, many1)
 import qualified Text.Parsec as Parsec

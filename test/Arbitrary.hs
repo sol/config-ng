@@ -7,7 +7,6 @@ import           Data.Text   (Text)
 import qualified Data.Text as Text
 import           Data.String
 import           Test.QuickCheck
-import           Data.Attoparsec.Text (isEndOfLine)
 import           Data.Set   (Set)
 import qualified Data.Set as Set
 import           Control.Monad (foldM)
@@ -16,6 +15,7 @@ import           Instance ()
 import qualified Parse
 import           Internal
 import qualified Data.Config as Config
+import           ParseUtil (isEndOfLine)
 
 parse :: String -> Config
 parse input = case Config.parse input of

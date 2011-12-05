@@ -24,8 +24,8 @@ library
       base
     , containers
     , text
-    , attoparsec >= 0.10.0.0
   if flag(use-attoparsec)
     cpp-options: -DUSE_ATTOPARSEC
+    build-depends: attoparsec >= 0.10.0.0
   else
     build-depends: parsec >= 3.1.2 && < 3.2
