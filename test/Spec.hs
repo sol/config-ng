@@ -35,6 +35,36 @@ main = hspec spec
 
 spec = do
 
+  describe "a valid config" $ do
+    it "may have tabs and spaces before and after section headers" $ do
+      parse_ $ do
+        " \t  [foo]  \t  "
+        "bar=baz"
+      -: toList `shouldBe` [("foo", "bar", "baz")]
+
+    it "may have tabs and spaces before an option" $ do
+      parse_ $ do
+        "   foo=bar"
+      -: toList `shouldBe` [("", "foo", "bar")]
+
+    it "may contain comments" $ do
+      parse_ $ do
+        "# foobar"
+        "foo=bar"
+      -: toList `shouldBe` [("", "foo", "bar")]
+
+    it "may have tabs and spaces before a comment" $ do
+      parse_ $ do
+        "  \t # foobar"
+        "foo=bar"
+      -: toList `shouldBe` [("", "foo", "bar")]
+
+    it "may contain empty lines" $ do
+      parse_ $ do
+        "foo=bar"
+        "   "
+      -: toList `shouldBe` [("", "foo", "bar")]
+
   describe "empty" $ do
     it "has no sections" $ do
       empty -: sections `shouldBe` []
