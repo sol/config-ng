@@ -185,7 +185,7 @@ spec = do
           "bar=_"
           "foo=_"
 
-    it "appends new sections at the end" $ do
+    it "appends new sections at the end, separated with a newline" $ do
         parse_ $ do
           "[foo]"
           "[bar]"
@@ -194,6 +194,7 @@ spec = do
           "[foo]"
           "[bar]"
           "[baz]"
+          ""
           "[a]"
           "b=c"
 

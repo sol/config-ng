@@ -138,23 +138,25 @@ insertIntoSection k v s = s { sectionOptions = Map.alter alterOption k (sectionO
 insert :: Section -> Key -> Value -> Config -> Config
 insert s k v c = Config newSections
   where
-    newSections = Map.alter f s $ configSections c
+    sects = configSections c
+    newSections = Map.alter f s $ sects
       where
-        sectionIndex = if s == defaultSectionName then minBound else maxBound
-        f Nothing       = Just $ (sectionIndex, newSection s k v)
+        isDefaultSection = s == defaultSectionName
+        prependNewline = not (isDefaultSection || Map.null sects)
+        sectionIndex = if isDefaultSection then minBound else maxBound
+        f Nothing       = Just $ (sectionIndex, newSection)
         f (Just (i, x)) = Just $ (i, insertIntoSection k v x)
 
-newSection :: Section -> Key -> Value -> ConfigSection
-newSection s k v = ConfigSection {
-    sectionOptions      = Map.singleton k (0, option)
-  , sectionComments     = []
-  , sectionEmptyLines   = []
-  , sectionRenderedName = renderedName
-  , sectionMinIndex     = 0
-  }
-  where
-    option =  ConfigOption (unKey k `Text.append` "=") v
-    renderedName = if s == defaultSectionName then "" else Text.concat ["[", unSection s, "]"]
+        newSection = ConfigSection {
+            sectionOptions      = Map.singleton k (0, option)
+          , sectionComments     = []
+          , sectionEmptyLines   = []
+          , sectionRenderedName = renderedName
+          , sectionMinIndex     = 0
+          }
+          where
+            option =  ConfigOption (unKey k `Text.append` "=") v
+            renderedName = if s == defaultSectionName then "" else Text.concat [if prependNewline then "\n[" else "[", unSection s, "]"]
 
 delete :: Section -> Key -> Config -> Config
 delete s k c = Config $ Map.alter f s $ configSections c
