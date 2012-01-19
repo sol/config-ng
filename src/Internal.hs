@@ -115,6 +115,7 @@ data ConfigSection = ConfigSection {
 , sectionComments     :: [(Index, Comment)]
 , sectionEmptyLines   :: [(Index, Text)]
 , sectionRenderedName :: Text
+, sectionMinIndex     :: Index
 }
 
 data ConfigOption = ConfigOption {
@@ -126,9 +127,12 @@ mkOption :: Key -> Value -> ConfigOption
 mkOption k v = ConfigOption (unKey k `Text.append` "=") v
 
 insertIntoSection :: Key -> Value -> ConfigSection -> ConfigSection
-insertIntoSection k v s = s { sectionOptions = Map.alter alterOption k (sectionOptions s) }
+insertIntoSection k v s = s { sectionOptions = Map.alter alterOption k (sectionOptions s), sectionMinIndex = nextIndex }
   where
-    alterOption Nothing       = Just (-1, mkOption k v)
+    -- We add new options at the beginning.  This is important, as comments at
+    -- the end of a section may be commented sections!
+    nextIndex = pred $ sectionMinIndex s
+    alterOption Nothing       = Just (nextIndex, mkOption k v)
     alterOption (Just (i, x)) = Just (i, x {optionValue = v})
 
 insert :: Section -> Key -> Value -> Config -> Config
@@ -146,6 +150,7 @@ newSection s k v = ConfigSection {
   , sectionComments     = []
   , sectionEmptyLines   = []
   , sectionRenderedName = renderedName
+  , sectionMinIndex     = 0
   }
   where
     option =  ConfigOption (unKey k `Text.append` "=") v
@@ -201,7 +206,7 @@ mkConfig l = Config <$> foldM go Map.empty (zip l [0..])
 mkSection :: [(Key, (Index, ConfigOption))] -> [(Index, Comment)] -> [(Index, Text)] -> Text -> Either String ConfigSection
 mkSection opts c b n = do
   o <- foldM go Map.empty opts
-  return $ ConfigSection o c b n
+  return $ ConfigSection o c b n 0
   where
     go acc (k, v) = case Map.insertLookupWithKey undefined k v acc of
       (Nothing, m) -> return m

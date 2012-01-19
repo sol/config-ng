@@ -158,7 +158,7 @@ spec = do
         "[foo]"
         "bar=baz"
 
-    it "inserts new options at the beginning of a section" $ do
+    it "inserts a new option at the beginning of a section" $ do
         -- this is important, as comments at the end of a section may be
         -- commented sections...
         parse_ $ do
@@ -170,6 +170,20 @@ spec = do
           "c=baz"
           "a=foo"
           "b=bar"
+
+    it "inserts new options at the beginning of a section (multiple inserts)" $ do
+        -- this is important, as comments at the end of a section may be
+        -- commented sections...
+        empty
+        -: insert "some" "foo" "_"
+        -: insert "some" "bar" "_"
+        -: insert "some" "baz" "_"
+        -: insert "some" "qux" "_" `shouldRenderTo` do
+          "[some]"
+          "qux=_"
+          "baz=_"
+          "bar=_"
+          "foo=_"
 
     it "appends new sections at the end" $ do
         parse_ $ do
