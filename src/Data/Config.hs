@@ -18,7 +18,6 @@ module Data.Config (
 
 import           Prelude hiding (lookup)
 import qualified Data.Text as Text
-import qualified Data.Map as Map
 
 import           Internal
 import           Parse (parseConfig)

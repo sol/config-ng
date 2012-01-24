@@ -196,6 +196,14 @@ spec = do
           "[a]"
           "b=c"
 
+    it " appends new sections at the end, separated with a newline (bug fix)" $ do
+        empty -: insert "one" "two" "three" -: insert "a" "b" "c" `shouldRenderTo` do
+          "[one]"
+          "two=three"
+          ""
+          "[a]"
+          "b=c"
+
     it "replaces an existing option" $ do
         parse_ $ do
           "[foo]"
@@ -224,7 +232,7 @@ spec = do
 
   describe "delete" $ do
     it "removes an option" $ do
-      parse "foo=bar" -: delete "" "foo" `shouldBe` empty
+      parse "foo=bar" -: delete "" "foo" -: render `shouldBe` ""
 
     it "removes an option from a section" $ do
       parse_ $ do

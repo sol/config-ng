@@ -9,6 +9,7 @@ runhaskell -hide-all-packages\
     -packageHUnit\
     -packageQuickCheck\
     -packagehspec\
+    -packagehspec-shouldbe\
     -packageparsec\
     -i../src Spec.hs $*
 
@@ -20,5 +21,6 @@ runhaskell -hide-all-packages\
     -packageHUnit\
     -packageQuickCheck\
     -packagehspec\
+    -packagehspec-shouldbe\
     -packageattoparsec -DUSE_ATTOPARSEC\
     -i../src Spec.hs $*

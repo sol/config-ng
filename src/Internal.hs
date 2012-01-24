@@ -65,15 +65,15 @@ instance ToString Value where
   toString = Text.unpack . unValue
 
 newtype Index = Index Int
-  deriving (Eq, Show, Enum, Num, Ord, Bounded)
+  deriving (Eq, Show, Enum, Num, Ord)
 
 newtype Comment = Comment {unComment :: Text}
 
 empty :: Config
-empty = Config $ Map.empty
+empty = Config Map.empty 0
 
 sections :: Config -> [Section]
-sections (Config conf) =
+sections (Config conf _) =
   -- exclude default section, if it only contains blank lines or comments
   case mDefaultSectionSize of
     Just 0 -> filter (/= defaultSectionName) sects
@@ -117,8 +117,9 @@ foldSection f (_, section) start = Map.foldrWithKey g start $ sectionOptions sec
     g k (_, a) acc = f k (optionValue a) acc
 
 
-newtype Config = Config {
+data Config = Config {
   configSections       :: Map Section (Index, ConfigSection)
+, configNextIndex      :: Index
 }
 
 data ConfigSection = ConfigSection {
@@ -147,14 +148,13 @@ insertIntoSection k v s = s { sectionOptions = Map.alter alterOption k (sectionO
     alterOption (Just (i, x)) = Just (i, x {optionValue = v})
 
 insert :: Section -> Key -> Value -> Config -> Config
-insert s k v c = Config newSections
+insert s k v (Config sects nextIndex) = Config newSections (succ nextIndex)
   where
-    sects = configSections c
     newSections = Map.alter f s $ sects
       where
         isDefaultSection = s == defaultSectionName
         prependNewline = not (isDefaultSection || Map.null sects)
-        sectionIndex = if isDefaultSection then minBound else maxBound
+        sectionIndex = if isDefaultSection then (-1) else nextIndex
         f Nothing       = Just $ (sectionIndex, newSection)
         f (Just (i, x)) = Just $ (i, insertIntoSection k v x)
 
@@ -170,8 +170,9 @@ insert s k v c = Config newSections
             renderedName = if s == defaultSectionName then "" else Text.concat [if prependNewline then "\n[" else "[", unSection s, "]"]
 
 delete :: Section -> Key -> Config -> Config
-delete s k c = Config $ Map.alter f s $ configSections c
+delete s k c = c {configSections = Map.alter f s sects}
   where
+    sects = configSections c
     f Nothing  = Nothing
     f (Just x) = deleteFromSection k x
 
@@ -210,7 +211,7 @@ sortByIndex :: [(Index, a)] -> [(Index, a)]
 sortByIndex = List.sortBy (\(a, _) (b, _) -> a `compare` b)
 
 mkConfig :: [(Section, ConfigSection)] -> Either String Config
-mkConfig l = Config <$> foldM go Map.empty (zip l [0..])
+mkConfig l = Config <$> foldM go Map.empty (zip l [0..]) <*> return (Index $ length l)
   where
     go acc ((s, x), i) = case Map.insertLookupWithKey undefined s (i, x) acc of
       (Nothing, m) -> return m
