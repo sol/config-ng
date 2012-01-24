@@ -283,6 +283,20 @@ spec = do
         "[c]"
       -: sections `shouldBe`  ["a", "b", "c"]
 
+    it "includes the default section" $ do
+      parse_ $ do
+        "foo=baz"
+        "[b]"
+        "[c]"
+      -: sections `shouldBe`  ["", "b", "c"]
+
+    it "does not include the default section, if it is empty" $ do
+      parse_ $ do
+        "# foobar"
+        "[b]"
+        "[c]"
+      -: sections `shouldBe`  ["b", "c"]
+
   describe "keys" $ do
     it "returns a list of keys from a given section" $ do
       parse_ $ do

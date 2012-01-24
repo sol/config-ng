@@ -14,6 +14,7 @@ module Internal (
 , render
 , empty
 , sections
+, hasSection
 , keys
 , lookup
 , ToString (..)
@@ -72,7 +73,17 @@ empty :: Config
 empty = Config $ Map.empty
 
 sections :: Config -> [Section]
-sections = Map.keys . configSections
+sections (Config conf) =
+  -- exclude default section, if it only contains blank lines or comments
+  case mDefaultSectionSize of
+    Just 0 -> filter (/= defaultSectionName) sects
+    _ -> sects
+  where
+    sects = Map.keys conf
+    mDefaultSectionSize = (Map.size . sectionOptions . snd) `fmap` Map.lookup defaultSectionName conf
+
+hasSection :: Section -> Config -> Bool
+hasSection s = Map.member s . configSections
 
 keys :: Section -> Config -> [Key]
 keys s = maybe [] (Map.keys . sectionOptions . snd) . Map.lookup s . configSections

@@ -25,6 +25,3 @@ import           Parse (parseConfig)
 
 parse :: String -> Either String Config
 parse = parseConfig . Text.pack
-
-hasSection :: Section -> Config -> Bool
-hasSection s = Map.member s . configSections
