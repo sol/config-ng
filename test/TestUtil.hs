@@ -4,8 +4,8 @@ import Data.List (sort)
 import Control.Monad
 
 import Test.HUnit
-import Test.Hspec.Monadic
 import Test.Hspec.Core (Example)
+import Test.Hspec.ShouldBe
 
 import Data.String.Builder
 
@@ -24,11 +24,6 @@ shouldSatisfy :: (Show a) => a -> (a -> Bool) -> Assertion
 x `shouldSatisfy` p = unless (p x) (assertFailure message)
   where
     message = show x ++ " did not satisfy predicate"
-
-shouldBe :: (Show a, Eq a) => a -> a -> Assertion
-actual `shouldBe` expected = unless (actual == expected) (assertFailure message)
-  where
-    message = show actual ++ " was not equal to " ++ show expected
 
 shouldBe_ :: String -> Builder -> Assertion
 actual `shouldBe_` expected = actual `shouldBe` build expected

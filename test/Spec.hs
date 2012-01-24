@@ -4,9 +4,7 @@ module Spec (main, spec) where
 
 import           Prelude hiding (lookup)
 
-import           Test.Hspec.Monadic
-import           Test.Hspec.QuickCheck
-import           Test.Hspec.HUnit ()
+import           Test.Hspec.ShouldBe
 import           Test.HUnit
 import           Test.QuickCheck hiding (property)
 
