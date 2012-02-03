@@ -1,5 +1,5 @@
 {-# LANGUAGE OverloadedStrings, ScopedTypeVariables, CPP #-}
-{-# OPTIONS_GHC -fno-warn-unused-do-bind -fno-warn-missing-signatures #-}
+{-# OPTIONS_GHC -fno-warn-unused-do-bind #-}
 module Spec (main, spec) where
 
 import           Prelude hiding (lookup)
@@ -21,6 +21,7 @@ import           Data.Config hiding (parse)
 
 import           Arbitrary (parse, Input(..), InputAndConfig1(..), InputAndConfig(..))
 
+parse_ :: Builder -> Config
 parse_ = parse . build
 
 shouldRenderTo :: Config -> Builder -> Assertion
@@ -29,8 +30,10 @@ conf `shouldRenderTo` expected = render conf `shouldBe_` expected
 (-:) :: a -> (a -> b) -> b
 x -: f = f x
 
-main = hspec spec
+main :: IO ()
+main = hspecX spec
 
+spec :: Specs
 spec = do
 
   describe "a valid config" $ do
