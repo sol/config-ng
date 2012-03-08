@@ -38,31 +38,40 @@ import qualified Data.List as List
 defaultSectionName :: Section
 defaultSectionName = ""
 
-newtype Section = Section {unSection :: Text}
-  deriving (Ord, Eq, IsString)
+newtype Section = Section Text
+  deriving (Eq, Ord, Show, IsString)
 
-newtype Key = Key {unKey :: Text}
-  deriving (Ord, Eq, IsString)
+newtype Key = Key Text
+  deriving (Eq, Ord, Show, IsString)
 
-newtype Value = Value {unValue :: Text}
-  deriving IsString
+newtype Value = Value Text
+  deriving (Eq, Show, IsString)
 
-instance Show Section where
-  showsPrec p = showsPrec p . unSection
-instance Show Key where
-  showsPrec p = showsPrec p . unKey
-instance Show Value where
-  showsPrec p = showsPrec p . unValue
+unSection :: Section -> Text
+unSection (Section s) = s
+
+unKey :: Key -> Text
+unKey (Key k) = k
+
+unValue :: Value -> Text
+unValue (Value v) = v
 
 class ToString a where
+
   toString :: a -> String
+  toString = Text.unpack . toText
+
+  toText :: a -> Text
+  toText = Text.pack . toString
 
 instance ToString Section where
-  toString = Text.unpack . unSection
+  toText = unSection
+
 instance ToString Key where
-  toString = Text.unpack . unKey
+  toText = unKey
+
 instance ToString Value where
-  toString = Text.unpack . unValue
+  toText = unValue
 
 newtype Index = Index Int
   deriving (Eq, Show, Enum, Num, Ord)

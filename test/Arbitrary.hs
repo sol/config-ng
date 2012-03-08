@@ -96,7 +96,7 @@ configBody = do
   return $ maybe l (:l) defaultSection
   where
     f (set, xs) body = do
-      name <- sectionName `suchThat` (\n -> n /= unSection defaultSectionName && Set.notMember n set)
+      name <- sectionName `suchThat` (\n -> n /= toText defaultSectionName && Set.notMember n set)
       header <- sectionHeader name
       return (Set.insert name set, (header : body) : xs)
 

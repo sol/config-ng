@@ -13,6 +13,5 @@ deriving instance Eq Config
 deriving instance Eq ConfigSection
 deriving instance Eq ConfigOption
 deriving instance Eq Comment
-deriving instance Eq Value
 
 deriving instance Ord Value
