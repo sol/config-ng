@@ -5,6 +5,7 @@ module Spec (main, spec) where
 import           Prelude hiding (lookup)
 
 import           Test.Hspec.ShouldBe
+import           Test.HUnit.ShouldBe.Contrib
 import           Test.HUnit
 import           Test.QuickCheck hiding (property)
 

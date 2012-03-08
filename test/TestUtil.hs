@@ -16,15 +16,6 @@ import Data.String.Builder
 --
 --  * ignore does not work on prop.
 
-isLeft :: Either a b -> Bool
-isLeft (Left  _) = True
-isLeft (Right _) = False
-
-shouldSatisfy :: (Show a) => a -> (a -> Bool) -> Assertion
-x `shouldSatisfy` p = unless (p x) (assertFailure message)
-  where
-    message = show x ++ " did not satisfy predicate"
-
 shouldBe_ :: String -> Builder -> Assertion
 actual `shouldBe_` expected = actual `shouldBe` build expected
 
