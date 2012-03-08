@@ -17,10 +17,10 @@ module Data.Config (
 ) where
 
 import           Prelude hiding (lookup)
-import qualified Data.Text as Text
+import           Data.Text (Text)
 
 import           Internal
 import           Parse (parseConfig)
 
-parse :: String -> Either String Config
-parse = parseConfig . Text.pack
+parse :: Text -> Either String Config
+parse = parseConfig
