@@ -39,13 +39,22 @@ defaultSectionName :: Section
 defaultSectionName = ""
 
 newtype Section = Section Text
-  deriving (Eq, Ord, Show, IsString)
+  deriving (Eq, Ord, IsString)
 
 newtype Key = Key Text
-  deriving (Eq, Ord, Show, IsString)
+  deriving (Eq, Ord, IsString)
 
 newtype Value = Value Text
-  deriving (Eq, Show, IsString)
+  deriving (Eq, IsString)
+
+instance Show Section where
+  showsPrec p = showsPrec p . unSection
+
+instance Show Key where
+  showsPrec p = showsPrec p . unKey
+
+instance Show Value where
+  showsPrec p = showsPrec p . unValue
 
 unSection :: Section -> Text
 unSection (Section s) = s
@@ -213,8 +222,8 @@ renderConfig :: Config -> [Text]
 renderConfig c =
   concatMap (renderSection . snd) . sortByIndex $ Map.elems $ configSections c
 
-render :: Config -> String
-render = Text.unpack . Text.unlines . renderConfig
+render :: Config -> Text
+render = Text.unlines . renderConfig
 
 sortByIndex :: [(Index, a)] -> [(Index, a)]
 sortByIndex = List.sortBy (\(a, _) (b, _) -> a `compare` b)

@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings, ScopedTypeVariables, CPP #-}
 {-# OPTIONS_GHC -fno-warn-unused-do-bind #-}
-module Spec (main, spec) where
+module Main (main, spec) where
 
 import           Prelude hiding (lookup)
 
@@ -8,9 +8,13 @@ import           Test.Hspec.ShouldBe
 import           Test.HUnit.ShouldBe.Contrib
 import           Test.HUnit
 import           Test.QuickCheck hiding (property)
+import           Data.List (sort)
 
-import           Data.String.Builder (Builder, build)
-import           TestUtil
+import           Data.Text   (Text)
+import qualified Data.Text as Text
+
+import           Data.String.Builder (Builder)
+import qualified Data.String.Builder as String
 import           Instance ()
 
 import           Data.Set   (Set)
@@ -22,11 +26,17 @@ import           Data.Config hiding (parse)
 
 import           Arbitrary (parse, Input(..), InputAndConfig1(..), InputAndConfig(..))
 
+build :: Builder -> Text
+build = Text.pack . String.build
+
 parse_ :: Builder -> Config
 parse_ = parse . build
 
 shouldRenderTo :: Config -> Builder -> Assertion
-conf `shouldRenderTo` expected = render conf `shouldBe_` expected
+conf `shouldRenderTo` expected = render conf `shouldBe` build expected
+
+shouldBeSet :: (Show a, Ord a) => [a] -> [a] -> Assertion
+actual `shouldBeSet` expected = sort actual `shouldBe` sort expected
 
 (-:) :: a -> (a -> b) -> b
 x -: f = f x

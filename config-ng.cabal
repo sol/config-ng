@@ -29,3 +29,20 @@ library
     build-depends: attoparsec >= 0.10.0.0
   else
     build-depends: parsec >= 3.1.2 && < 3.2
+
+test-suite spec
+  main-is:
+      Spec.hs
+  type:
+      exitcode-stdio-1.0
+  ghc-options:
+      -Wall -threaded
+  hs-source-dirs:
+      src, test
+  build-depends:
+      base        >= 4.0  && < 4.6
+    , hspec-shouldbe
+    , stringbuilder
+    , QuickCheck
+    , HUnit
+    , test-shouldbe

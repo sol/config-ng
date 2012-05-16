@@ -5,6 +5,7 @@ module Arbitrary where
 import           Control.Applicative hiding (empty)
 import           Data.Text   (Text)
 import qualified Data.Text as Text
+import qualified Data.Text.IO as Text
 import           Data.String
 import           Test.QuickCheck
 import           Data.Set   (Set)
@@ -17,7 +18,7 @@ import           Internal
 import qualified Data.Config as Config
 import           ParseUtil (isEndOfLine)
 
-parse :: String -> Config
+parse :: Text -> Config
 parse input = case Config.parse input of
   Right x -> x
   Left err -> error err
@@ -100,34 +101,34 @@ configBody = do
       header <- sectionHeader name
       return (Set.insert name set, (header : body) : xs)
 
-config :: Gen String
-config = Text.unpack . Text.unlines . concat <$> configBody
+config :: Gen Text
+config = Text.unlines . concat <$> configBody
 
-inputAndConfig :: Gen (String, Config)
+inputAndConfig :: Gen (Text, Config)
 inputAndConfig = do
   input <- config
   return $ (input, parse input)
 
-inputAndConfig1 :: Gen (String, Config)
+inputAndConfig1 :: Gen (Text, Config)
 inputAndConfig1 = inputAndConfig `suchThat` (not . null . toList . snd)
 
-data Input = Input String
+data Input = Input Text
   deriving Show
 
 instance Arbitrary Input where
-  arbitrary = Input<$> config
+  arbitrary = Input <$> config
 
-data InputAndConfig = InputAndConfig String Config
+data InputAndConfig = InputAndConfig Text Config
   deriving Show
 
 instance Arbitrary InputAndConfig where
   arbitrary = uncurry InputAndConfig <$> inputAndConfig
 
-data InputAndConfig1 = InputAndConfig1 String Config
+data InputAndConfig1 = InputAndConfig1 Text Config
   deriving Show
 
 instance Arbitrary InputAndConfig1 where
   arbitrary = uncurry InputAndConfig1 <$> inputAndConfig1
 
 sampleConfig :: IO ()
-sampleConfig = sample' config >>= mapM_ (\s -> putStrLn s >> putStrLn (replicate 78 '#'))
+sampleConfig = sample' config >>= mapM_ (\s -> Text.putStrLn s >> putStrLn (replicate 78 '#'))
