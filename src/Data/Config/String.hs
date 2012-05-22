@@ -15,13 +15,16 @@ module Data.Config.String (
 import           Prelude hiding (lookup)
 import           Data.String
 
-import           Data.Config (Config, empty, render, toString)
+import           Data.Config (Config, empty, toString)
 import qualified Data.Config as Plain
 
 import qualified Data.Text as Text
 
 parse :: String -> Either String Config
 parse = Plain.parse . Text.pack
+
+render :: Config -> String
+render = Text.unpack . Plain.render
 
 lookup :: String -> String -> Config -> Maybe String
 lookup s k c = toString `fmap` Plain.lookup (fromString s) (fromString k) c
