@@ -4,10 +4,11 @@ module Main (main, spec) where
 
 import           Prelude hiding (lookup)
 
-import           Test.Hspec.ShouldBe
-import           Test.HUnit.ShouldBe.Contrib
+import           Test.Hspec
+import           Test.Hspec.QuickCheck
+import           Test.Hspec.Expectations.Contrib
 import           Test.HUnit
-import           Test.QuickCheck hiding (property)
+import           Test.QuickCheck
 import           Data.List (sort)
 
 import           Data.Text   (Text)

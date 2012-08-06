@@ -41,8 +41,8 @@ test-suite spec
       src, test
   build-depends:
       base        >= 4.0  && < 4.6
-    , hspec-shouldbe
+    , hspec       >= 1.3
+    , hspec-expectations
     , stringbuilder
     , QuickCheck
     , HUnit
-    , test-shouldbe
