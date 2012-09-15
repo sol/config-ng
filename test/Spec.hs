@@ -1,5 +1,4 @@
 {-# LANGUAGE OverloadedStrings, ScopedTypeVariables, CPP #-}
-{-# OPTIONS_GHC -fno-warn-unused-do-bind #-}
 module Main (main, spec) where
 
 import           Prelude hiding (lookup)
